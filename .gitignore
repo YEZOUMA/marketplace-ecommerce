@@ -1,0 +1,40 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Env files
+.env
+.env.*
+!.env.example
+
+# Build outputs
+dist/
+build/
+**/dist/
+**/build/
+frontend/.vite/
+
+# Logs
+*.log
+npm-debug.log*
+logs/
+
+# Prisma
+backend/prisma/dev.db
+
+# Docker volumes (local dev bind mounts)
+storage-data/
+postgres-data/
+
+# OS / editor
+.DS_Store
+.vscode/
+.idea/
+*.swp
+
+# Coverage
+coverage/
+.nyc_output/
+
+# Husky (generated)
+.husky/_/

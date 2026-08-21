@@ -1,0 +1,15 @@
+{
+  "name": "marketplace-ecommerce",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Plateforme e-commerce multi-vendeurs (mobile money) — outillage racine (Git hooks, commitlint)",
+  "scripts": {
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^19.5.0",
+    "@commitlint/config-conventional": "^19.5.0",
+    "husky": "^9.1.6"
+  }
+}

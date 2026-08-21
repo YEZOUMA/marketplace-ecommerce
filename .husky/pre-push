@@ -1,0 +1,11 @@
+protected_branches="^(main|develop)$"
+current_branch=$(git rev-parse --abbrev-ref HEAD)
+
+if echo "$current_branch" | grep -Eq "$protected_branches"; then
+  echo ""
+  echo "🚫 Push direct refusé sur la branche protégée '$current_branch'."
+  echo "   Créez une branche feature/<nom> ou fix/<nom> et ouvrez une Pull Request."
+  echo "   (Ce garde-fou local complète, sans le remplacer, la protection de branche GitHub.)"
+  echo ""
+  exit 1
+fi
