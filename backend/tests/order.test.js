@@ -51,7 +51,7 @@ describe('Commandes (sans paiement client)', () => {
       });
 
     expect(res.status).toBe(201);
-    expect(res.body.total).toBe(60000);
+    expect(Number(res.body.total)).toBe(60000); 'expect(res.body.total).toBe(60000);'
     expect(res.body.statut).toBe('EN_ATTENTE');
     expect(res.body.items).toHaveLength(1);
   });

@@ -4,20 +4,20 @@
 # branche (voir CONTRIBUTING.md et scripts/setup-branch-protection.sh).
 
 # Backend (API, base de données, paiements)
-/backend/                        @yezouma
-/backend/prisma/                 @yezouma
-/backend/src/payments/           @yezouma
+/backend/                        @YEZOUMA
+/backend/prisma/                 @YEZOUMA
+/backend/src/payments/           @YEZOUMA
 
 # Frontend
-/frontend/                       @yezouma
+/frontend/                       @YEZOUMA
 
 # CI/CD, Docker, infrastructure
-/.github/                        @yezouma
-/docker-compose.yml              @yezouma
-/nginx/                          @yezouma
-/backend/Dockerfile              @yezouma
-/frontend/Dockerfile             @yezouma
-/scripts/                        @yezouma
+/.github/                        @YEZOUMA
+/docker-compose.yml              @YEZOUMA
+/nginx/                          @YEZOUMA
+/backend/Dockerfile              @YEZOUMA
+/frontend/Dockerfile             @YEZOUMA
+/scripts/                        @YEZOUMA
 
 # Défaut : tout le reste
-*                                 @yezouma
+*                                 @YEZOUMA
