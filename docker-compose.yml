@@ -1,0 +1,131 @@
+name: marketplace-ecommerce
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-marketplace}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+      POSTGRES_DB: ${POSTGRES_DB:-marketplace}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    ports:
+      - '${POSTGRES_PORT:-5432}:5432'
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-marketplace} -d ${POSTGRES_DB:-marketplace}']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - marketplace-network
+
+  storage:
+    image: minio/minio:latest
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    volumes:
+      - minio-data:/data
+    ports:
+      - '${MINIO_PORT:-9000}:9000'
+      - '${MINIO_CONSOLE_PORT:-9001}:9001'
+    healthcheck:
+      test: ['CMD', 'mc', 'ready', 'local']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - marketplace-network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      storage:
+        condition: service_healthy
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+      PORT: 4000
+      DATABASE_URL: ${DATABASE_URL}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost}
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+      JWT_ACCESS_EXPIRES_IN: ${JWT_ACCESS_EXPIRES_IN:-15m}
+      JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-7d}
+      STORAGE_MODE: ${STORAGE_MODE:-local}
+      STORAGE_LOCAL_DIR: /app/uploads
+      MINIO_ENDPOINT: ${MINIO_ENDPOINT:-storage}
+      MINIO_PORT: ${MINIO_PORT:-9000}
+      MINIO_USE_SSL: ${MINIO_USE_SSL:-false}
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      MINIO_BUCKET: ${MINIO_BUCKET:-product-images}
+      MINIO_PUBLIC_URL: ${MINIO_PUBLIC_URL:-http://localhost/product-images}
+      PUBLICATION_FEE_AMOUNT: ${PUBLICATION_FEE_AMOUNT:-500}
+      PUBLICATION_FEE_CURRENCY: ${PUBLICATION_FEE_CURRENCY:-XOF}
+      PAYMENTS_MOCK_MODE: ${PAYMENTS_MOCK_MODE:-true}
+      PAYMENTS_WEBHOOK_SECRET: ${PAYMENTS_WEBHOOK_SECRET}
+      ORANGE_MONEY_API_KEY: ${ORANGE_MONEY_API_KEY:-}
+      ORANGE_MONEY_API_SECRET: ${ORANGE_MONEY_API_SECRET:-}
+      ORANGE_MONEY_BASE_URL: ${ORANGE_MONEY_BASE_URL:-}
+      MOOV_MONEY_API_KEY: ${MOOV_MONEY_API_KEY:-}
+      MOOV_MONEY_API_SECRET: ${MOOV_MONEY_API_SECRET:-}
+      MOOV_MONEY_BASE_URL: ${MOOV_MONEY_BASE_URL:-}
+      WAVE_API_KEY: ${WAVE_API_KEY:-}
+      WAVE_API_SECRET: ${WAVE_API_SECRET:-}
+      WAVE_BASE_URL: ${WAVE_BASE_URL:-}
+      SANK_MONEY_API_KEY: ${SANK_MONEY_API_KEY:-}
+      SANK_MONEY_API_SECRET: ${SANK_MONEY_API_SECRET:-}
+      SANK_MONEY_BASE_URL: ${SANK_MONEY_BASE_URL:-}
+      RATE_LIMIT_WINDOW_MS: ${RATE_LIMIT_WINDOW_MS:-900000}
+      RATE_LIMIT_MAX: ${RATE_LIMIT_MAX:-300}
+      RUN_SEED_ON_START: ${RUN_SEED_ON_START:-true}
+      SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-admin@marketplace.local}
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-ChangeMoi123!}
+    volumes:
+      - uploads-data:/app/uploads
+    ports:
+      - '${BACKEND_PORT:-4000}:4000'
+    networks:
+      - marketplace-network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-/api}
+    restart: unless-stopped
+    depends_on:
+      - backend
+    networks:
+      - marketplace-network
+
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    depends_on:
+      - frontend
+      - backend
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    ports:
+      - '${HTTP_PORT:-80}:80'
+    networks:
+      - marketplace-network
+
+networks:
+  marketplace-network:
+    driver: bridge
+
+volumes:
+  postgres-data:
+  minio-data:
+  uploads-data:
