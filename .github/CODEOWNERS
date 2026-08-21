@@ -1,0 +1,23 @@
+# Relecteurs obligatoires par zone du projet.
+# Remplacez les identifiants ci-dessous par les membres réels de l'équipe
+# avant d'activer "Require review from Code Owners" dans la protection de
+# branche (voir CONTRIBUTING.md et scripts/setup-branch-protection.sh).
+
+# Backend (API, base de données, paiements)
+/backend/                        @yezouma
+/backend/prisma/                 @yezouma
+/backend/src/payments/           @yezouma
+
+# Frontend
+/frontend/                       @yezouma
+
+# CI/CD, Docker, infrastructure
+/.github/                        @yezouma
+/docker-compose.yml              @yezouma
+/nginx/                          @yezouma
+/backend/Dockerfile              @yezouma
+/frontend/Dockerfile             @yezouma
+/scripts/                        @yezouma
+
+# Défaut : tout le reste
+*                                 @yezouma
