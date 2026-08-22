@@ -25,7 +25,21 @@ export async function initiatePublicationPayment(vendeurId, productId, { prestat
     description: `Frais de publication - ${product.nom}`,
   });
 
-  const [payment] = await prisma.$transaction([
+  const [, payment] = await prisma.$transaction([
+    // Supersede any still-pending previous attempt for this product first.
+    // Without this, an abandoned attempt (vendor picked a provider, never
+    // confirmed on their phone, then retried with a different provider)
+    // stays EN_ATTENTE forever — and if that stale attempt's webhook ever
+    // arrives late, confirmPublicationPayment would apply its outcome to the
+    // product and could silently un-publish a product that was, in the
+    // meantime, successfully published via the newer attempt.
+    prisma.productPublicationPayment.updateMany({
+      where: { productId, statut: 'EN_ATTENTE' },
+      data: {
+        statut: 'ECHOUE',
+        dateConfirmation: new Date(),
+      },
+    }),
     prisma.productPublicationPayment.create({
       data: {
         productId,
@@ -65,21 +79,28 @@ export async function confirmPublicationPayment({ prestataire, reference, status
   const newStatus = status === 'REUSSI' ? 'REUSSI' : 'ECHOUE';
   const productStatus = newStatus === 'REUSSI' ? 'PUBLIE' : 'BROUILLON';
 
-  const [updatedPayment] = await prisma.$transaction([
-    prisma.productPublicationPayment.update({
-      where: { id: payment.id },
-      data: {
-        statut: newStatus,
-        dateConfirmation: new Date(),
-        metadata: {
-          ...(payment.metadata ?? {}),
-          providerTransactionId: providerTransactionId ?? payment.metadata?.providerTransactionId,
-          webhook: raw ?? null,
-        },
+  const paymentUpdate = prisma.productPublicationPayment.update({
+    where: { id: payment.id },
+    data: {
+      statut: newStatus,
+      dateConfirmation: new Date(),
+      metadata: {
+        ...(payment.metadata ?? {}),
+        providerTransactionId: providerTransactionId ?? payment.metadata?.providerTransactionId,
+        webhook: raw ?? null,
       },
-    }),
-    prisma.product.update({ where: { id: payment.productId }, data: { statut: productStatus } }),
-  ]);
+    },
+  });
+
+  // The product may have been deleted by its vendor while this payment was
+  // still pending (productId is then null — see the schema comment on
+  // ProductPublicationPayment). Nothing to publish/unpublish in that case;
+  // just record the outcome on the payment for the audit trail.
+  const operations = payment.productId
+    ? [paymentUpdate, prisma.product.update({ where: { id: payment.productId }, data: { statut: productStatus } })]
+    : [paymentUpdate];
+
+  const [updatedPayment] = await prisma.$transaction(operations);
 
   return updatedPayment;
 }
