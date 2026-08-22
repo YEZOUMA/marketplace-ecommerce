@@ -70,8 +70,8 @@ Réponse type (register/login/refresh) :
 | Méthode | Route | Auth | Description |
 |---|---|---|---|
 | GET | `/payments/providers` | Non | Liste des prestataires supportés + montant des frais de publication |
-| POST | `/payments/publish/:productId` | VENDEUR (propriétaire) | Initie le paiement. Body: `{ prestataire: "ORANGE_MONEY"\|"MOOV_MONEY"\|"WAVE"\|"SANK_MONEY", numeroTelephone }`. Le produit passe en `EN_ATTENTE_PAIEMENT`. Retourne `{ payment, redirectUrl }` |
-| GET | `/payments/mine` | VENDEUR | Historique des paiements de publication du vendeur |
+| POST | `/payments/publish/:productId` | VENDEUR (propriétaire) | Initie le paiement. Body: `{ prestataire: "ORANGE_MONEY"\|"MOOV_MONEY"\|"WAVE"\|"SANK_MONEY", numeroTelephone }`. Toute tentative encore `EN_ATTENTE` pour ce produit est d'abord invalidée (`ECHOUE`). Le produit passe en `EN_ATTENTE_PAIEMENT`. Retourne `{ payment, redirectUrl }` |
+| GET | `/payments/mine` | VENDEUR | Historique des paiements de publication du vendeur (page "Mes paiements"). `product` peut être `null` si le produit a depuis été supprimé — l'enregistrement de paiement, lui, est conservé |
 | POST | `/payments/webhook/:prestataire` | Signature HMAC (pas de JWT) | Appelé par le prestataire pour confirmer/infirmer un paiement. Voir ci-dessous |
 | POST | `/payments/mock/simulate` | VENDEUR | **Mode sandbox uniquement** (`PAYMENTS_MOCK_MODE=true`) : simule la confirmation d'un paiement sans prestataire réel. Body: `{ reference, resultat: "REUSSI"\|"ECHOUE" }` |
 
