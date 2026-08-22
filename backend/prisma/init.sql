@@ -61,9 +61,12 @@ CREATE TABLE product_images (
 );
 CREATE INDEX idx_product_images_product_id ON product_images(product_id);
 
+-- product_id is nullable with ON DELETE SET NULL (not CASCADE): a payment is
+-- a financial/audit record that must outlive the product it paid to publish,
+-- so deleting a product never erases the fact that it was paid for.
 CREATE TABLE product_publication_payments (
     id                      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    product_id              UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+    product_id              UUID REFERENCES products(id) ON DELETE SET NULL,
     vendeur_id              UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     montant                 DECIMAL(12,2) NOT NULL CHECK (montant >= 0),
     devise                  VARCHAR(8) NOT NULL DEFAULT 'XOF',

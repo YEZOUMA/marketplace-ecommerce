@@ -125,8 +125,13 @@ model ProductImage {
 
 model ProductPublicationPayment {
   id                   String          @id @default(uuid())
-  productId            String          @map("product_id")
-  product              Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  // Nullable and ON DELETE SET NULL (not Cascade): a publication payment is a
+  // financial/audit record that must survive the product being deleted later
+  // — otherwise a vendor deleting a product would silently erase the fact
+  // that they paid for it, understating the platform's admin-reported
+  // publication fee revenue.
+  productId            String?         @map("product_id")
+  product              Product?        @relation(fields: [productId], references: [id], onDelete: SetNull)
   vendeurId            String          @map("vendeur_id")
   vendeur              User            @relation("VendeurPayments", fields: [vendeurId], references: [id], onDelete: Cascade)
   montant              Decimal         @db.Decimal(12, 2)
