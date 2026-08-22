@@ -10,8 +10,11 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-marketplace}
     volumes:
       - postgres-data:/var/lib/postgresql/data
-    ports:
-      - '${POSTGRES_PORT:-5432}:5432'
+    # No host port published: only `backend` needs to reach Postgres, over the
+    # internal Docker network below. Keeping the database off the public
+    # internet by default is safer and one less thing to secure manually.
+    # Need to inspect the DB from your own machine? Use:
+    #   docker compose exec db psql -U <POSTGRES_USER> -d <POSTGRES_DB>
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-marketplace} -d ${POSTGRES_DB:-marketplace}']
       interval: 5s
@@ -20,18 +23,20 @@ services:
     networks:
       - marketplace-network
 
+  # Optional S3-compatible object storage. NOT started by default — the
+  # simpler local-disk storage (STORAGE_MODE=local, the default) needs it.
+  # Only start this if you deliberately set STORAGE_MODE=minio:
+  #   docker compose --profile minio up -d --build
   storage:
     image: minio/minio:latest
     restart: unless-stopped
+    profiles: ['minio']
     command: server /data --console-address ":9001"
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
     volumes:
       - minio-data:/data
-    ports:
-      - '${MINIO_PORT:-9000}:9000'
-      - '${MINIO_CONSOLE_PORT:-9001}:9001'
     healthcheck:
       test: ['CMD', 'mc', 'ready', 'local']
       interval: 5s
@@ -48,12 +53,18 @@ services:
     depends_on:
       db:
         condition: service_healthy
-      storage:
-        condition: service_healthy
+      # Intentionally not depending on `storage` here, even when using MinIO:
+      # the backend only talks to it lazily, the first time an image is
+      # actually uploaded (see src/services/storage.service.js). Requiring it
+      # to be healthy at boot would mean a MinIO hiccup takes the whole API
+      # down even though nothing failed for users who never upload an image
+      # in that moment.
     environment:
       NODE_ENV: ${NODE_ENV:-production}
       PORT: 4000
-      DATABASE_URL: ${DATABASE_URL}
+      # Built from the individual Postgres variables below so you only ever
+      # set a password in one place (POSTGRES_PASSWORD).
+      DATABASE_URL: postgresql://${POSTGRES_USER:-marketplace}:${POSTGRES_PASSWORD:-changeme}@db:5432/${POSTGRES_DB:-marketplace}?schema=public
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost}
       JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET}
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
@@ -91,8 +102,20 @@ services:
       SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-ChangeMoi123!}
     volumes:
       - uploads-data:/app/uploads
-    ports:
-      - '${BACKEND_PORT:-4000}:4000'
+    # No host port published by default: all traffic reaches the backend
+    # through Caddy (see the `caddy` service), which also terminates HTTPS.
+    # Publishing 4000 directly here would let anyone bypass that entirely.
+    # Need direct access while developing? Create a docker-compose.override.yml
+    # (already gitignored) with:
+    #   services:
+    #     backend:
+    #       ports: ['4000:4000']
+    healthcheck:
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:4000/health']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
     networks:
       - marketplace-network
 
@@ -108,16 +131,24 @@ services:
     networks:
       - marketplace-network
 
-  nginx:
-    image: nginx:1.27-alpine
+  # Single public entry point. Caddy automatically obtains and renews an
+  # HTTPS certificate the moment SITE_ADDRESS is a real domain (see
+  # Caddyfile) — no certbot, no manual certificate handling.
+  caddy:
+    image: caddy:2-alpine
     restart: unless-stopped
     depends_on:
       - frontend
       - backend
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:-http://localhost}
     volumes:
-      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
     ports:
       - '${HTTP_PORT:-80}:80'
+      - '${HTTPS_PORT:-443}:443'
     networks:
       - marketplace-network
 
@@ -129,3 +160,8 @@ volumes:
   postgres-data:
   minio-data:
   uploads-data:
+  # Caddy's certificates and internal state — persisting this volume is what
+  # stops Caddy from re-requesting a certificate from Let's Encrypt on every
+  # restart (which would eventually hit Let's Encrypt's rate limits).
+  caddy-data:
+  caddy-config:

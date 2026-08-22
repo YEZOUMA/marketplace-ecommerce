@@ -14,7 +14,7 @@
 # CI/CD, Docker, infrastructure
 /.github/                        @yezouma
 /docker-compose.yml              @yezouma
-/nginx/                          @yezouma
+/Caddyfile                       @yezouma
 /backend/Dockerfile              @yezouma
 /frontend/Dockerfile             @yezouma
 /scripts/                        @yezouma

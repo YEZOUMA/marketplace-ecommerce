@@ -1,0 +1,44 @@
+# Reverse proxy configuration for Caddy.
+#
+# Why Caddy instead of a hand-configured Nginx here: Caddy obtains and
+# renews HTTPS certificates (Let's Encrypt) completely automatically the
+# moment SITE_ADDRESS is a real public domain — no certbot container, no
+# manual certificate bootstrap, no renewal cron job. That removes the one
+# piece of a production deployment that normally requires DevOps experience.
+#
+# Local development (default): SITE_ADDRESS=http://localhost in .env — Caddy
+# serves plain HTTP, no certificate involved.
+# Production: SITE_ADDRESS=votre-domaine.com (no scheme) — Caddy detects a
+# public hostname and automatically provisions/renews HTTPS for it, as long
+# as the domain's DNS points at this server and ports 80/443 are reachable.
+{$SITE_ADDRESS:http://localhost} {
+	encode gzip
+
+	handle /api/* {
+		# Defense in depth: the backend itself already rejects files over 5MB
+		# and more than 8 per upload (multer), this just stops an oversized
+		# request from being proxied through at all.
+		request_body {
+			max_size 50MB
+		}
+		reverse_proxy backend:4000
+	}
+
+	handle /uploads/* {
+		reverse_proxy backend:4000
+	}
+
+	# Only reachable when STORAGE_MODE=minio (product images served directly
+	# from MinIO instead of the backend's local uploads volume).
+	handle /product-images/* {
+		reverse_proxy storage:9000
+	}
+
+	handle /health {
+		reverse_proxy backend:4000
+	}
+
+	handle {
+		reverse_proxy frontend:80
+	}
+}
