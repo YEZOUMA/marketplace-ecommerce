@@ -17,6 +17,7 @@ import ProductListPage from './pages/vendor/ProductListPage.jsx';
 import ProductFormPage from './pages/vendor/ProductFormPage.jsx';
 import PublishPaymentPage from './pages/vendor/PublishPaymentPage.jsx';
 import PaymentSimulationPage from './pages/vendor/PaymentSimulationPage.jsx';
+import PaymentsHistoryPage from './pages/vendor/PaymentsHistoryPage.jsx';
 import ReceivedOrdersPage from './pages/vendor/ReceivedOrdersPage.jsx';
 
 import AdminLayout from './components/admin/AdminLayout.jsx';
@@ -71,6 +72,7 @@ export default function App() {
             <Route path="produits/:id/publier" element={<PublishPaymentPage />} />
             <Route path="paiement/simuler" element={<PaymentSimulationPage />} />
             <Route path="commandes" element={<ReceivedOrdersPage />} />
+            <Route path="paiements" element={<PaymentsHistoryPage />} />
           </Route>
 
           <Route

@@ -5,6 +5,7 @@ const links = [
   { to: '/vendeur/produits', label: 'Mes produits' },
   { to: '/vendeur/produits/nouveau', label: 'Publier un produit' },
   { to: '/vendeur/commandes', label: 'Commandes reçues' },
+  { to: '/vendeur/paiements', label: 'Mes paiements' },
 ];
 
 export default function VendorLayout() {
